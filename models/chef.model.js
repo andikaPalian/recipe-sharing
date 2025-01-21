@@ -23,6 +23,10 @@ const chefSchema = new mongoose.Schema({
     isVerified: {
         type: Boolean,
         default: false,
+    },
+    cloudinary_id: {
+        type: String,
+        default: "",
     }
 }, {
     timestamps: true,

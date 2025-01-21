@@ -1,7 +1,14 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import validator from "validator";
+import fs from "fs";
+import path from "path";
+import { v2 as cloudinary } from 'cloudinary';
+import { fileURLToPath } from "url";
 import Chef from "../models/chef.model.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const registerChef = async (req, res) => {
     try {
@@ -88,4 +95,76 @@ const loginChef = async (req, res) => {
     }
 }
 
-export {registerChef, loginChef};
+const uploadProfilePicture = async (req, res) => {
+    try {
+        const chefId = req.chef.chefId;
+        if (!chefId) {
+            return res.status(400).json({message: "Invalid chef ID"});
+        }
+        
+        if (!req.file) {
+            return res.status(400).json({message: "No file uploaded"});
+        }
+
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            return res.status(400).json({message: "Invalid file type. Only JPEG, PNG, and JPG files are allowed."});
+        }
+
+        // Upload ke Cloudinary
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: "profile-pictures",
+            use_filename: true,
+            unique_filename: true,
+        });
+
+        // Hapus file lokal setelah upload le cloudinary
+        fs.promises.unlink(req.file.path);
+
+        const filePath = path.join(__dirname, "../uploads/profile-pictures", req.file.filename);
+        if (!fs.existsSync(filePath)) {
+            return res.status(500).json({message: "File upload failed, please try again"})
+        }
+
+        
+        const chef = await Chef.findByIdAndUpdate(
+            chefId,
+            {
+                profilePicture: result.secure_url,
+                cloudinary_id: result.public_id,
+            },
+            {new: true}
+        );
+        if (!chef) {
+            // Jika chef tidak ditemukan, hapus gambar dari Cloudinary
+            await cloudinary.uploader.destroy(result.public_id)
+            return res.status(404).json({message: "Chef not found"});
+        }
+
+        res.status(200).json({
+            message: "profile picture uplaoaded successfully",
+            data: {
+                profilePicture: chef.profilePicture,
+                cloudinary_id: chef.cloudinary_id,
+            }
+        });
+    } catch (error) {
+        console.error("Error during chef profile picture upload:", error);
+
+        // Hapus file lokal jika masih ada
+        if (req.file && req.file.path) {
+            try {
+                fs.promises.unlinkSync(req.file.path);
+            } catch (unlinkError) {
+                console.error("Error deleting local file:", unlinkError);
+            }
+        }
+
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message || "An unexpected error occurred",
+        });
+    }
+}
+
+export {registerChef, loginChef, uploadProfilePicture};
