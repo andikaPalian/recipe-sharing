@@ -1,5 +1,5 @@
 import express from "express";
-import { loginChef, registerChef, uploadProfilePicture } from "../controllers/chef.controller.js";
+import { editBio, loginChef, registerChef, uploadProfilePicture } from "../controllers/chef.controller.js";
 import upload from "../middleware/multer.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -15,5 +15,6 @@ chefRouter.post("/uploadProfilePicture", upload.single("profilePicture"), (err, 
     }
     next();
 }, authMiddleware, uploadProfilePicture);
+chefRouter.post("/bio", authMiddleware, editBio);
 
 export default chefRouter;

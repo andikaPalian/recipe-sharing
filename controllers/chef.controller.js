@@ -167,4 +167,42 @@ const uploadProfilePicture = async (req, res) => {
     }
 }
 
-export {registerChef, loginChef, uploadProfilePicture};
+const editBio = async (req, res) => {
+    try {
+        const chefId = req.chef.chefId;
+        const {bio} = req.body;
+
+        if (!chefId) {
+            return res.status(400).json({message: "Invalid chef ID"});
+        }
+
+        const chef = await Chef.findById(chefId);
+        if (!chef) {
+            return res.status(404).json({message: "Chef not found"})
+        }
+
+        if (bio !== undefined) {
+            if (bio.trim() === "") {
+                chef.bio = "";
+            }else if (typeof bio !== "string") {
+                return res.status(400).json({message: "Invalid Bio format. Bio should be a string."});
+            } else {
+                chef.bio = validator.escape(bio.trim());
+            }
+        }
+
+        await chef.save();
+        res.status(200).json({
+            message: "Bio updated successfully",
+            bio: chef.bio,
+        });
+    } catch (error) {
+        console.error("Error during chef bio update:", error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message || "An unexpected error occurred",
+        });
+    }
+}
+
+export {registerChef, loginChef, uploadProfilePicture, editBio};
