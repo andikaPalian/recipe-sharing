@@ -102,7 +102,7 @@ const uploadProfilePicture = async (req, res) => {
             return res.status(400).json({message: "Invalid chef ID"});
         }
         
-        if (!req.file) {
+        if (!req.file || req.file.length === 0) {
             return res.status(400).json({message: "No file uploaded"});
         }
 

@@ -60,6 +60,10 @@ const recipeSchema = new mongoose.Schema({
             default: Date.now 
         },
     }],
+    cloudinary_id: {
+        type: String,
+        default: "",
+    }
 }, {
     timestamps: true,
 });
