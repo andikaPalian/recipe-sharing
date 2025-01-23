@@ -164,6 +164,10 @@ const listRecipe = async (req, res) => {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
+        if (page < 1 || limit < 1) {
+            return res.status(400).json({message: "Invalid page or limit parameters"});
+        }
+
         // Pencarian berdasarkan title atau description
         if (search) {
             const reqex = new RegExp(search, "i");
@@ -173,23 +177,36 @@ const listRecipe = async (req, res) => {
             ]
         }
 
+        if (isNaN(Date.parse(startDate))) {
+            return res.status(400).json({message: "Invalid start date format"});
+        }
+        
+        if (isNaN(Date.parse(endDate))) {
+            return res.status(400).json({message: "Invalid end date format"});
+        }
+
         if (startDate || endDate) {
-            filter.creetedAt = {};
+            filter.createdAt  = {};
             if (startDate) {
-                filter.creetedAt.$gte = new Date(startDate);
+                filter.createdAt .$gte = new Date(startDate);
             }
 
             if (endDate) {
-                filter.creetedAt.$lte = new Date(endDate);
+                filter.createdAt .$lte = new Date(endDate);
             }
         }
 
         let chefId = [];
         if (chef) {
-            const reqex = new RegExp(search, "i");
+            const reqex = new RegExp(chef, "i");
             const chefs = await Chef.find({name: reqex});
             chefId = chefs.map(chef => chef._id);
-            query.author = {$in: chefId};
+            
+            if (chefId.length > 0) {
+                filter.author = {$in: chefId};
+            } else {
+                return res.status(404).json({message: "No chef found matching the query"});
+            }
         }
 
         if (category) {
