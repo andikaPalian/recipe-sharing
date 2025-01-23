@@ -1,6 +1,6 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { addRecipe } from "../controllers/recipe.controller.js";
+import { addRecipe, listRecipe } from "../controllers/recipe.controller.js";
 import upload from "../middleware/multer.js";
 
 const recipeRouter = express.Router();
@@ -13,5 +13,6 @@ recipeRouter.post("/", upload.single("image"), (err, req, res, next) => {
     }
     next();
 }, authMiddleware, addRecipe);
+recipeRouter.get("/recipe", listRecipe);
 
 export default recipeRouter;

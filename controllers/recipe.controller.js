@@ -3,6 +3,7 @@ import {v2 as cloudinary} from 'cloudinary';
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import Chef from "../models/chef.model.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,7 @@ const addRecipe = async (req, res) => {
         let parsedIngredients;
         try {
             parsedIngredients = JSON.parse(ingredients);
-            if (!Array.isArray(parsedIngredients) || parsedIngredients.length === 0) {
+            if (!Array.isArray(parsedIngredients) ||  parsedIngredients.length === 0) {
                 return res.status(400).json({message: "Ingredients must be a non-empty array"});
             }
 
@@ -156,4 +157,61 @@ const addRecipe = async (req, res) => {
     }
 }
 
-export {addRecipe};
+const listRecipe = async (req, res) => {
+    try {
+        const {search = "", startDate, endDate, chef, category, page = 1, limit = 10} = req.query;
+        const filter = {};
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Pencarian berdasarkan title atau description
+        if (search) {
+            const reqex = new RegExp(search, "i");
+            filter.$or =[
+                {title: reqex},
+                {description: reqex}
+            ]
+        }
+
+        if (startDate || endDate) {
+            filter.creetedAt = {};
+            if (startDate) {
+                filter.creetedAt.$gte = new Date(startDate);
+            }
+
+            if (endDate) {
+                filter.creetedAt.$lte = new Date(endDate);
+            }
+        }
+
+        let chefId = [];
+        if (chef) {
+            const reqex = new RegExp(search, "i");
+            const chefs = await Chef.find({name: reqex});
+            chefId = chefs.map(chef => chef._id);
+            query.author = {$in: chefId};
+        }
+
+        if (category) {
+            filter.category = category;
+        }
+
+        const recipe = await Recipe.find(filter).skip(skip).limit(parseInt(limit)).populate("author", "name").sort({createdAt: -1 });
+        const totalRecipe = await Recipe.countDocuments(filter);
+        const totalPages = Math.ceil(totalRecipe / parseInt(limit))
+        res.status(200).json({
+            data: recipe,
+            total: totalRecipe,
+            page: parseInt(page),
+            totalPages: totalPages,
+        });
+    } catch (error) {
+        console.error("Error during list recipe:", error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message || "An unexpected error occurred",
+        });
+    }
+}
+
+export {addRecipe, listRecipe};
