@@ -1,6 +1,6 @@
 import Recipe from "../models/recipe.model.js";
 import {v2 as cloudinary} from 'cloudinary';
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import Chef from "../models/chef.model.js";
@@ -124,7 +124,7 @@ const addRecipe = async (req, res) => {
         })
 
         // Hapus file lokal setelah upload ke cloudinary
-        fs.promises.unlink(req.file.path);
+        await fs.unlink(req.file.path);
 
         const filePath = path.join(__dirname, "../uploads/image", req.file.filename);
         if (!fs.existsSync(filePath)) {

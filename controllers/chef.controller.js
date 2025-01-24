@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import validator from "validator";
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { v2 as cloudinary } from 'cloudinary';
 import { fileURLToPath } from "url";
@@ -119,7 +119,7 @@ const uploadProfilePicture = async (req, res) => {
         });
 
         // Hapus file lokal setelah upload le cloudinary
-        fs.promises.unlink(req.file.path);
+        await fs.unlink(req.file.path);
 
         const filePath = path.join(__dirname, "../uploads/profile-pictures", req.file.filename);
         if (!fs.existsSync(filePath)) {
@@ -154,7 +154,7 @@ const uploadProfilePicture = async (req, res) => {
         // Hapus file lokal jika masih ada
         if (req.file && req.file.path) {
             try {
-                fs.promises.unlinkSync(req.file.path);
+                await fs.unlinkSync(req.file.path);
             } catch (unlinkError) {
                 console.error("Error deleting local file:", unlinkError);
             }
