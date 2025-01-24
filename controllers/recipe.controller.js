@@ -4,6 +4,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Chef from "../models/chef.model.js";
+import mongoose from "mongoose";
+import { resolveSoa } from "dns";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -177,14 +179,6 @@ const listRecipe = async (req, res) => {
             ]
         }
 
-        if (isNaN(Date.parse(startDate))) {
-            return res.status(400).json({message: "Invalid start date format"});
-        }
-        
-        if (isNaN(Date.parse(endDate))) {
-            return res.status(400).json({message: "Invalid end date format"});
-        }
-
         if (startDate || endDate) {
             filter.createdAt  = {};
             if (startDate) {
@@ -231,4 +225,92 @@ const listRecipe = async (req, res) => {
     }
 }
 
-export {addRecipe, listRecipe};
+const addComments = async (req, res) => {
+    try {
+        const chefId = req.chef.chefId;
+        const recipeId = req.params.id;
+        const {comment} = req.body;
+
+        if (!chefId) {
+            return res.status(401).json({message: "Chef is not authorized"});
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(recipeId)) {
+            return res.status(400).json({message: "Invalid recipe ID"});
+        }
+
+        const recipe = await Recipe.findById(recipeId);
+        if (!recipe) {
+            return res.status(404).json({message: "Recipe not found"});
+        }
+
+        if (comment !== undefined) {
+            if (typeof comment !== "string" || comment.trim().length === 0) {
+                return res.status(400).json({message: "Invalid comment format. Comment must be a non-empty string"});
+            }
+            recipe.comments.push({chefId, comment});
+        }
+
+        const chef = await Chef.findById(chefId);
+        if (!chef) {
+            return res.status(404).json({message: "Chef not found"});
+        }
+
+        await recipe.save();
+        res.status(200).json({
+            message: "Comment added successfully",
+            comment: {
+                chef: chef.name,
+                comment,
+            },
+        })
+    } catch (error) {
+        console.error("Error during add comment:", error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message || "An unexpected error occurred",
+        });
+    }
+}
+
+const deleteComments = async (req, res) => {
+    try {
+        const chefId = req.chef.chefId;
+        const recipeId = req.params.id;
+        const commentId = req.params.commentId;
+
+        if (!chefId) {
+            return res.status(401).json({message: "Chef is not authorized"});
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(recipeId)) {
+            return res.status(400).json({message: "Invalid recipe ID"});
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(commentId)) {
+            return res.status(400).json({message: "Invalid comment ID"});
+        }
+
+        const recipe = await Recipe.findById(recipeId);
+        if (!recipe) {
+            return res.status(404).json({message: "Recipe not found"});
+        }
+
+        const commentsIndex = recipe.comments.findIndex(comment => comment._id.toString() === commentId);
+        if (commentsIndex === -1) {
+            return res.status(404).json({message: "Comment not found"});
+        }
+
+        recipe.comments.splice(commentsIndex, 1);
+        await recipe.save();
+        res.status(200).json({message: "Comment deleted successfully"});
+    } catch (error) {
+        console.error("Error during delete comment:", error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message || "An unexpected error occurred",
+        });
+    }
+}
+
+export {addRecipe, listRecipe, addComments, deleteComments};
